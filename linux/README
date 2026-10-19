@@ -1,0 +1,47 @@
+# Linux / SteamOS notes (experimental)
+
+Built in an Ubuntu 22.04 distrobox container and run on SteamOS (Steam Machine, x86_64), streaming to a Steam Frame. Only tested with Half-Life: Alyx. Not tested on other distros, other headsets, or Windows since these changes.
+
+## Caveats
+
+- Walking input sometimes drops out for a couple of seconds, then resumes (cause unknown).
+- Default pace was "baby steps" for me; raising the pace values helped (I used 1 / 1.5 / 2).
+- The packaged overlay needs library fixes, handled by `linux/post-install.sh`. Re-run it after every `./build.sh install`, which deletes the overlay folder.
+- Logs go to stderr, so run the overlay with `2> log.txt` to capture them.
+
+## Build (inside the container)
+
+```bash
+distrobox create --name wip --image ubuntu:22.04
+distrobox enter wip
+
+sudo apt install -y build-essential cmake git python3 patchelf \
+  libboost-dev libboost-system-dev libboost-filesystem-dev \
+  qtbase5-dev qt5-qmake qtdeclarative5-dev qtquickcontrols2-5-dev \
+  libqt5svg5-dev qtmultimedia5-dev \
+  qml-module-qtquick2 qml-module-qtquick-controls2 qml-module-qtquick-layouts \
+  qml-module-qtquick-window2 qml-module-qtquick-dialogs \
+  qml-module-qtgraphicaleffects qml-module-qtmultimedia \
+  libmlpack-dev mlpack-bin libarmadillo-dev libensmallen-dev
+
+git clone --recursive <this repo> && cd OpenVR-WalkInPlace
+./build.sh build
+```
+
+The package list was assembled from build errors, so it may not be exact. Boost comes from the system; the bundled Boost 1.65 isn't needed.
+
+## Install (on the host, not in the container)
+
+```bash
+./build.sh install
+sh linux/post-install.sh        # optional argument: container name (default: wip)
+```
+
+The script removes the bundled glibc, copies missing libraries from the container, installs `run-overlay.sh`, and creates the data model folder (`~/.local/share/pottedmeat7/OpenVRWalkInPlace`).
+
+## Run
+
+1. Start SteamVR and connect the headset first (without one the overlay exits with error 215).
+2. `~/.steam/steam/vrwalkinplace/run-overlay.sh 2> ~/ovrwip_error.txt`
+3. Apply a data model, then tick **Enable WIP**.
+3. In Alyx, use the "Continuous Hand" movement type.
